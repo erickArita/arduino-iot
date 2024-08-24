@@ -1,0 +1,11 @@
+# Ignorar el entorno virtual
+venv/
+
+# Ignorar otros archivos y carpetas comunes
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignorar configuraciones de entorno de desarrollo
+.vscode/
+.idea/

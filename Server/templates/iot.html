@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Face Authentication</title>
+    <style>
+      :root {
+        --background: 0 0% 100%;
+        --foreground: 240 10% 3.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 240 10% 3.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 240 10% 3.9%;
+        --primary: 240 5.9% 10%;
+        --primary-foreground: 0 0% 98%;
+        --secondary: 240 4.8% 95.9%;
+        --secondary-foreground: 240 5.9% 10%;
+        --muted: 240 4.8% 95.9%;
+        --muted-foreground: 240 3.8% 45%;
+        --accent: 240 4.8% 95.9%;
+        --accent-foreground: 240 5.9% 10%;
+        --destructive: 0 72% 51%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 240 5.9% 90%;
+        --input: 240 5.9% 90%;
+        --ring: 240 5.9% 10%;
+        --chart-1: 173 58% 39%;
+        --chart-2: 12 76% 61%;
+        --chart-3: 197 37% 24%;
+        --chart-4: 43 74% 66%;
+        --chart-5: 27 87% 67%;
+        --radius: 0.5rem;
+      }
+      
+      img[src='/placeholder.svg'],
+      img[src='/placeholder-user.jpg'] {
+        filter: sepia(0.3) hue-rotate(-60deg) saturate(0.5) opacity(0.8);
+      }
+    </style>
+    <style>
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6 {
+        font-family: 'Inter', sans-serif;
+        --font-sans-serif: 'Inter';
+      }
+    </style>
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        --font-sans-serif: 'Inter';
+      }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  </head>
+
+  <body>
+    <div class="flex flex-col h-screen bg-background">
+      <header class="bg-card py-4 px-6 shadow">
+        <h1 class="text-2xl font-bold">Arduino Control Panel</h1>
+      </header>
+      <main class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+        <div class="bg-card rounded-lg shadow p-6 order-2 md:order-1">
+          <h2 class="text-lg font-bold mb-4">Sensors</h2>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-muted rounded-md p-4">
+              <h3 class="text-sm font-medium mb-2">Temperature</h3>
+              <div class="text-4xl font-bold">
+                <span id="temperature">25</span>°C
+              </div>
+            </div>
+            <div class="bg-muted rounded-md p-4">
+              <h3 class="text-sm font-medium mb-2">Humidity</h3>
+              <div class="text-4xl font-bold">
+                <span id="humidity">60</span>%
+              </div>
+            </div>
+            <div class="bg-muted rounded-md p-4">
+              <h3 class="text-sm font-medium mb-2">Light</h3>
+              <div class="text-4xl font-bold">
+                <span id="light">500</span> lux
+              </div>
+            </div>
+            <div class="bg-muted rounded-md p-4">
+              <h3 class="text-sm font-medium mb-2">Motion</h3>
+              <div class="text-4xl font-bold">
+                <span id="motion">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bg-card rounded-lg shadow p-6 order-1 md:order-2">
+          <h2 class="text-lg font-bold mb-4">Actuators</h2>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-muted rounded-md p-4" id="5">
+              <h3 class="text-sm font-medium mb-2">Pin 5</h3>
+              <div class="flex items-center justify-between gap-2">
+                <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full" id="rele-off">Off</button>
+                <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full" id="rele-on">On</button>
+              </div>
+            </div>
+            <div class="bg-muted rounded-md p-4" id="6">
+              <h3 class="text-sm font-medium mb-2">Pin 6</h3>
+              <div class="flex items-center justify-between gap-2">
+                <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full" id="rele-off">Off</button>
+                <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full" id="rele-on">On</button>
+              </div>
+            </div>
+            <div class="bg-muted rounded-md p-4" id="7">
+              <h3 class="text-sm font-medium mb-2">Pin 7</h3>
+              <div class="flex items-center justify-between gap-2">
+                <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full" id="rele-off">Off</button>
+                <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full" id="rele-on">On</button>
+              </div>
+            </div>
+            <div class="bg-muted rounded-md p-4" id="8">
+              <h3 class="text-sm font-medium mb-2">Pin 8</h3>
+              <div class="flex items-center justify-between gap-2">
+                <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full" id="rele-off">Off</button>
+                <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full" id="rele-on">On</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+  <script>
+    var options = {
+      username: 'hivemq.webclient.1724272529511',
+      password: '8VLA5mB0a>f%.biJwE,4',
+      clientId: 'webclient_' + parseInt(Math.random() * 100000),
+      protocolId: 'MQTT'
+    }
+    
+    // initialize the MQTT client
+    var client = mqtt.connect('wss://6783779c24aa4559960fad8c072dcc2e.s1.eu.hivemq.cloud:8884/mqtt', options)
+    console.log(client)
+    console.log(options)
+    
+    // setup the callbacks
+    client.on('connect', function () {
+      console.log('Connected')
+      client.subscribe('releChannel', { qos: 0 })
+    })
+    
+    client.on('error', function (error) {
+      console.log(error)
+    })
+    
+    const pins = [
+      { name: 'led', value: 'off', pin: 5 },
+      { name: 'servo', value: 'off', pin: 6 },
+      { name: 'motor', value: 'off', pin: 7 },
+      { name: 'buzzer', value: 'off', pin: 8 }
+    ]
+    
+    const releOnBtn = document.querySelector('#rele-on')
+    const releOffBtn = document.querySelector('#rele-off')
+    client.on('message', function (topic, message) {
+      // called each time a message is received
+      console.log('Received message:', topic, message.toString())
+      if (topic === 'releChannel') {
+        const isTrueSet = message.toString() === 'true'
+    
+        if (isTrueSet) {
+          releOffBtn.classList.remove('bg-primary')
+          releOnBtn.classList.add('bg-primary')
+        } else {
+          releOnBtn.classList.remove('bg-primary')
+          releOffBtn.classList.add('bg-primary')
+        }
+      }
+    })
+    
+
+    document.querySelectorAll('button').forEach(function (button) {
+      button.addEventListener('click', function (e) {
+        // get the parent element of the button
+        const parent = button.parentElement.parentElement
+        // get the id of the parent element
+        const id = parent.id
+        console.log(e.target.innerText)
+        const dto = {
+          value: 'led' + id + e.target.innerText
+        }
+    
+        client.publish('testChannel', JSON.stringify(dto), { qos: 0 })
+      })
+    })
+  </script>
+</html>
