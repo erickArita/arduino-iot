@@ -25,21 +25,27 @@ void setup()
 
 void loop()
 {
+  // // Esperar a que haya datos disponibles en serial
+  // while (!Serial.available())
+  // {
+  //   mySerial.println(Serial.readStringUntil('\n'));
+  //   Serial.println("Esperando datos en Serial...");
+  // }
+
   while (mySerial.available())
   {
-    String input = mySerial.readStringUntil('\n');
-    Serial.print("Received input: ");
-    Serial.println(input); // tis is the message= Received input: Mensaje recibido desde MQTT: {"value":"ledOff"}
+    String input = mySerial.readString();
 
     // antes de convertirlo a json extraemos el mensaje
     int startIndex = input.indexOf("{");
     int endIndex = input.indexOf("}");
     String json = input.substring(startIndex, endIndex + 1);
+    Serial.println("json=" + json); // Imprimir el JSON extraído para depuración
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, json);
-    if (error)
+    if (error.code() != DeserializationError::Ok)
     {
-      Serial.print(F("deserializeJson() failed: "));
+      Serial.println(F("deserializeJson() failed: "));
       Serial.println(error.f_str());
       return;
     }
@@ -58,21 +64,16 @@ void loop()
 
       String ledOn = "led" + String(ledPins[i]) + "On";
       String ledOff = "led" + String(ledPins[i]) + "Off";
-
       if (strcmp(value.c_str(), ledOn.c_str()) == 0)
       {
         digitalWrite(ledPins[i], HIGH);
-        Serial.println(value);
       }
       else if (strcmp(value.c_str(), ledOff.c_str()) == 0)
       {
         digitalWrite(ledPins[i], LOW);
-        Serial.println(input);
       }
-      Serial.println(value);
-      Serial.println("geenrates" + ledOn);
-      Serial.println("geenrates" + ledOff);
     }
+    Serial.println("value=" + value);
   }
   // Si hay datos disponibles en Serial, léelos y envíalos a mySerial
   if (Serial.available())
