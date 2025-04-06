@@ -1,88 +1,45 @@
-// código par la ESP8266
-#include <ESP8266WiFi.h>
+#include <SoftwareSerial.h>
 #include <PubSubClient.h>
-#include <time.h>
-#include <TZ.h>
+#include <ESP8266WiFi.h>
+#include <ArduinoJson.h>
 
-const int ledPin = 2;             // Pin del LED (GPIO2 en ESP8266)
-unsigned long previousMillis = 0; // Almacena el último tiempo en que el LED cambió de estado
-const long interval = 1000;       // Intervalo de tiempo en milisegundos (1 segundo)
+const char *ssid = "ERICKLAP";              // Nombre de la red Wi-Fi
+const char *password = "12345678";          // Contraseña Wi-Fi
+const char *mqtt_server = "154.38.167.137"; // Dirección del broker MQTT
+const int mqtt_port = 1883;                 // Puerto del broker MQTT
 
-const char *ssid2 = "poco";
-// si se necesita contraseña
-// const char *password2 = "Hola1234";
-// Credenciales proporcionada por un broker(Servidor encargado de manejar los sockets)
-const char *mqtt_server = "cambiame.hivemq.cloud";
-const char *clientId = "";
-const char *username = "ardui";
-const char *mqtt_password = "";
+WiFiClient espClient;
+PubSubClient client(espClient);
 
-WiFiClientSecure espClient;
-PubSubClient client;
+SoftwareSerial mySerial(2, 3); // RX, TX
 
-void setup_wifi()
-{
-  delay(10);
-  WiFi.begin(ssid2);
+int ledPins[] = {5, 6, 7, 8}; // Pines de los LEDs
+const int numLeds = sizeof(ledPins) / sizeof(ledPins[0]);
 
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.println("Conectando a WiFi...");
-  }
+// Funciones de declaración
+void reconnect();
+void mqttCallback(char *topic, byte *payload, unsigned int length);
 
-  Serial.println("Conectado a WiFi");
-}
-
-void callback(char *topic, byte *payload, unsigned int length)
-{
-  String message;
-
-  for (unsigned int i = 0; i < length; i++)
-  {
-    message += (char)payload[i];
-  }
-
-  Serial.println("Mensaje recibido desde MQTT: " + message);
-
-  // Enviar el mensaje recibido desde MQTT al Arduino
-  Serial.println(message); // El Arduino debería estar escuchando en este mismo puerto
-}
-
-void reconnect()
-{
-  while (!client.connected())
-  {
-    Serial.print("Conectando a MQTT...");
-    if (client.connect("ESP8266Client-", username, mqtt_password))
-    {
-      Serial.println("Conectado");
-      client.subscribe("testTopic");                     // Suscripción al tema MQTT
-      client.subscribe("testChannel");                   // Suscripción al tema MQTT
-      client.publish("testTopic", "Hola desde ESP8266"); // Publicación en el tema MQTT
-    }
-    else
-    {
-      Serial.print("Falló, rc=");
-      Serial.print(client.state());
-      Serial.println(" Intentando de nuevo en 5 segundos");
-      delay(5000);
-    }
-  }
-}
+void processMessage(String message);
+void logToMqtt(String message);
 
 void setup()
 {
   Serial.begin(9600);
-  setup_wifi();
-  BearSSL::WiFiClientSecure *bear = new BearSSL::WiFiClientSecure();
+  mySerial.begin(9600);
 
-  bear->setInsecure();
+  // Configuración Wi-Fi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(1000);
+    Serial.println("Conectando a Wi-Fi...");
+  }
+  Serial.println("Conectado a Wi-Fi");
 
-  client.setClient(*bear);
-  client.setServer(mqtt_server, 8883);
-
-  client.setCallback(callback);
+  // // Configuración del cliente MQTT
+  client.setServer(mqtt_server, mqtt_port);
+  client.setCallback(mqttCallback);
 }
 
 void loop()
@@ -93,13 +50,103 @@ void loop()
   }
   client.loop();
 
-  if (Serial.available())
+  while (mySerial.available())
   {
-    String data = Serial.readStringUntil('\n'); // Cambiar a readStringUntil('\n')
-    if (data.indexOf("publish") == 0)
-    {
+    String input = mySerial.readString();
+    mySerial.println("Mensaje recibido: " + input);
+    processMessage(input);
+  }
 
-      client.publish("testChannel", data.c_str()); // Publicación en el tema MQTT
+  while (Serial.available())
+  {
+    String input = Serial.readString();
+    Serial.println("Mensaje recibido: serial " + input);
+    processMessage(input);
+  }
+}
+
+void reconnect()
+{
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(1000);
+    Serial.println("Conectando a Wi-Fi...");
+  }
+  while (!client.connected())
+  {
+    Serial.print("Intentando conectar a MQTT...");
+    if (client.connect("ArduinoClient", "ReWoogPyowieaqFP", "9PF3uRvqzd5ThH4zruWuYlAQ3SNhgXca"))
+    {
+      Serial.println("Conectado al broker MQTT");
+      client.subscribe("arduino/control");
+      client.publish("arduino/status", "Conectado al broker MQTT");
     }
+    else
+    {
+      Serial.print("Fallo en conexión MQTT, estado: ");
+      Serial.println(client.state());
+      delay(5000);
+    }
+  }
+}
+
+void mqttCallback(char *topic, byte *payload, unsigned int length)
+{
+  String message;
+  for (unsigned int i = 0; i < length; i++)
+  {
+    message += (char)payload[i];
+  }
+
+  Serial.println(message);
+
+  processMessage(message);
+}
+
+void logToMqtt(String message)
+{
+  // Publicar el mensaje en el topic "arduino/log"
+  client.publish("arduino/log", message.c_str());
+}
+
+void processMessage(String message)
+{
+  Serial.println("esp-" + message);
+  logToMqtt("Mensaje recibido: " + message);
+
+  // Si el mensaje viene del broker MQTT (hacia Arduino)
+  if (message.startsWith("{"))
+  {
+    // Enviar el mensaje al Arduino a través de la conexión serial
+    mySerial.println(message);
+    logToMqtt("Mensaje enviado al Arduino: " + message);
+    return;
+  }
+
+  // Si el mensaje viene del Arduino con formato "topic:json"
+  int separatorIndex = message.indexOf(":");
+  if (separatorIndex > 0)
+  {
+    String topic = message.substring(0, separatorIndex);
+    String payload = message.substring(separatorIndex + 1);
+
+    mySerial.println("esp-" + topic + ":" + payload);
+    
+    // Verificar si el payload es válido
+    if (payload.startsWith("{") && payload.endsWith("}"))
+    {
+      // Publicar directamente en MQTT con el topic especificado
+      client.publish(topic.c_str(), payload.c_str());
+
+      logToMqtt("Mensaje enviado a MQTT: " + topic + ":" + payload);
+    }
+    else
+    {
+      logToMqtt("Formato de payload inválido: " + payload);
+    }
+  }
+  else
+  {
+    logToMqtt("Formato de mensaje inválido: " + message);
   }
 }
