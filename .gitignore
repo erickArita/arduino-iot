@@ -1,1 +1,5 @@
 .qodo
+RecognitionApi/reference_faces/*
+!RecognitionApi/reference_faces/.gitkeep
+RecognitionApi/.venv
+RecognitionApi/**/__pycache__
