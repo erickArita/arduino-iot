@@ -1,2 +1,2 @@
 [phases.setup]
-nixpkgs = ["mesa"]  # o ["libGL"]
+nixpkgs = ["libGL"]  # o ["mesa"]
